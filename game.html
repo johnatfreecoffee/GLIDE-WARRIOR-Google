@@ -37,10 +37,10 @@
         
         // Character stats
         const characterStats = {
-            soldier: { speed: 4, jumpPower: 12, health: 3, color: [0, 255, 255], special: 'balanced' },
-            speedster: { speed: 6, jumpPower: 15, health: 2, color: [255, 255, 0], special: 'doubleJump' },
-            tank: { speed: 3, jumpPower: 10, health: 5, color: [255, 100, 0], special: 'armor' },
-            ninja: { speed: 5, jumpPower: 13, health: 2, color: [138, 43, 226], special: 'dash' }
+            soldier: { speed: 4, jumpPower: 12, health: 3, special: 'balanced', spriteIndex: 0 },
+            speedster: { speed: 6, jumpPower: 15, health: 2, special: 'doubleJump', spriteIndex: 1 },
+            tank: { speed: 3, jumpPower: 10, health: 5, special: 'armor', spriteIndex: 2 },
+            ninja: { speed: 5, jumpPower: 13, health: 2, special: 'dash', spriteIndex: 3 }
         };
         
         // Difficulty settings
@@ -53,6 +53,20 @@
         const settings = difficultySettings[DIFFICULTY] || difficultySettings.normal;
         const charStats = characterStats[CHARACTER_TYPE] || characterStats.soldier;
         
+        // --- NEW: Image Assets ---
+        let assets = {};
+
+        function preload() {
+            // These URLs point to the new, high-def game assets.
+            assets.playerSheet = loadImage('https://i.ibb.co/tYH81H1/player-sprites.png');
+            assets.enemySheet = loadImage('https://i.ibb.co/p1YtFhp/enemy-sprites.png');
+            assets.tileSet = loadImage('https://i.ibb.co/FqsYq5j/tileset.png');
+            assets.background1 = loadImage('https://i.ibb.co/s5bs0kM/bg-layer-1.png');
+            assets.background2 = loadImage('https://i.ibb.co/3cY0j1p/bg-layer-2.png');
+            assets.effects = loadImage('https://i.ibb.co/wJMy7s9/effects.png');
+            assets.powerups = loadImage('https://i.ibb.co/bB5xqc1/powerups.png');
+        }
+
         // Game state
         let player;
         let enemies = [];
@@ -61,17 +75,17 @@
         let powerups = [];
         let particles = [];
         let score = 0;
-        let lives = 3;
         let currentLevel = START_LEVEL;
         let gameState = 'playing';
         let cameraX = 0;
-        let levelWidth = 3000;
+        let levelWidth = 3200;
         let spawnTimer = 0;
         let gameTime = 0;
         let highScore = parseInt(localStorage.getItem('glideWarriorScore') || '0');
         
         function setup() {
             createCanvas(800, 600);
+            imageMode(CENTER);
             initLevel(currentLevel);
         }
         
@@ -82,14 +96,9 @@
             particles = [];
             gameTime = 0;
             
-            // Create player
             player = {
-                x: 100,
-                y: 300,
-                w: 30,
-                h: 40,
-                vx: 0,
-                vy: 0,
+                x: 150, y: 300, w: 48, h: 64,
+                vx: 0, vy: 0,
                 speed: charStats.speed,
                 jumpPower: -charStats.jumpPower,
                 gravity: 0.6,
@@ -103,45 +112,26 @@
                 dashCooldown: 0,
                 dashing: false,
                 dashTimer: 0,
-                color: color(charStats.color),
-                special: charStats.special
+                special: charStats.special,
+                spriteIndex: charStats.spriteIndex,
+                animFrame: 0,
+                facing: 1 // 1 for right, -1 for left
             };
             
-            // Create platforms
             platforms = [];
-            platforms.push({ x: 0, y: height - 50, w: levelWidth, h: 50 }); // Ground
-            
-            if (level === 1) {
-                platforms.push({ x: 300, y: 450, w: 200, h: 20 });
-                platforms.push({ x: 600, y: 350, w: 200, h: 20 });
-                platforms.push({ x: 900, y: 450, w: 200, h: 20 });
-                platforms.push({ x: 1200, y: 350, w: 200, h: 20 });
-                platforms.push({ x: 1500, y: 250, w: 200, h: 20 });
-                platforms.push({ x: 1800, y: 350, w: 200, h: 20 });
-                platforms.push({ x: 2100, y: 450, w: 200, h: 20 });
-                platforms.push({ x: 2400, y: 350, w: 300, h: 20 });
-            } else if (level === 2) {
-                platforms.push({ x: 200, y: 450, w: 150, h: 20 });
-                platforms.push({ x: 450, y: 350, w: 150, h: 20 });
-                platforms.push({ x: 700, y: 450, w: 150, h: 20 });
-                platforms.push({ x: 950, y: 300, w: 150, h: 20 });
-                platforms.push({ x: 1200, y: 450, w: 150, h: 20 });
-                platforms.push({ x: 1450, y: 250, w: 150, h: 20 });
-                platforms.push({ x: 1700, y: 400, w: 150, h: 20 });
-                platforms.push({ x: 1950, y: 300, w: 150, h: 20 });
-                platforms.push({ x: 2200, y: 450, w: 150, h: 20 });
-                platforms.push({ x: 2450, y: 350, w: 300, h: 20 });
-            } else {
-                platforms.push({ x: 250, y: 400, w: 120, h: 20 });
-                platforms.push({ x: 500, y: 300, w: 120, h: 20 });
-                platforms.push({ x: 750, y: 450, w: 120, h: 20 });
-                platforms.push({ x: 1000, y: 250, w: 120, h: 20 });
-                platforms.push({ x: 1250, y: 400, w: 120, h: 20 });
-                platforms.push({ x: 1500, y: 200, w: 120, h: 20 });
-                platforms.push({ x: 1750, y: 350, w: 120, h: 20 });
-                platforms.push({ x: 2000, y: 450, w: 120, h: 20 });
-                platforms.push({ x: 2250, y: 300, w: 120, h: 20 });
-                platforms.push({ x: 2500, y: 400, w: 400, h: 20 });
+            generatePlatforms(level);
+        }
+
+        function generatePlatforms(level) {
+            platforms.push({ x: 0, y: height - 32, w: levelWidth, h: 64 }); // Ground
+            let platformCount = 20 + level * 5;
+            for (let i = 1; i < platformCount; i++) {
+                platforms.push({
+                    x: i * 250 + random(-80, 80),
+                    y: height - random([120, 220, 320]),
+                    w: random([128, 192, 256]),
+                    h: 32
+                });
             }
         }
         
@@ -151,7 +141,7 @@
             if (gameState === 'playing') {
                 updateGame();
             } else {
-                showGameOver();
+                showEndScreen();
             }
             
             drawHUD();
@@ -160,7 +150,6 @@
         function updateGame() {
             gameTime++;
             
-            // Camera follow player
             cameraX = lerp(cameraX, player.x - width / 3, 0.1);
             cameraX = constrain(cameraX, 0, levelWidth - width);
             
@@ -168,169 +157,59 @@
             translate(-cameraX, 0);
             
             drawBackground();
+            drawPlatforms();
             
-            // Draw platforms
-            fill(100, 150, 100);
-            stroke(80, 120, 80);
-            strokeWeight(2);
-            for (let platform of platforms) {
-                rect(platform.x, platform.y, platform.w, platform.h);
-            }
-            
-            // Update player
             updatePlayer();
             drawPlayer();
             
-            // Spawn enemies
-            spawnTimer++;
-            if (spawnTimer > settings.spawnRate && enemies.length < settings.enemyCount) {
-                let spawnX = cameraX + width + random(100, 300);
-                if (spawnX < levelWidth - 200) {
-                    let enemyType = random(['ground', 'flying', 'jumping']);
-                    if (enemyType === 'flying') {
-                        enemies.push(createFlyingEnemy(spawnX, random(200, 400)));
-                    } else if (enemyType === 'jumping') {
-                        enemies.push(createJumpingEnemy(spawnX, height - 150));
-                    } else {
-                        enemies.push(createGroundEnemy(spawnX, height - 150));
-                    }
-                    spawnTimer = 0;
-                }
-            }
-            
-            // Update enemies
-            for (let i = enemies.length - 1; i >= 0; i--) {
-                updateEnemy(enemies[i]);
-                drawEnemy(enemies[i]);
-                
-                if (enemies[i].health <= 0) {
-                    score += 100;
-                    createExplosion(enemies[i].x, enemies[i].y);
-                    if (random() < 0.3) {
-                        powerups.push(createPowerup(enemies[i].x, enemies[i].y));
-                    }
-                    enemies.splice(i, 1);
-                } else if (enemies[i].x < cameraX - 100) {
-                    enemies.splice(i, 1);
-                }
-            }
-            
-            // Update bullets
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                updateBullet(bullets[i]);
-                drawBullet(bullets[i]);
-                
-                // Hit enemies
-                for (let j = enemies.length - 1; j >= 0; j--) {
-                    if (bulletHits(bullets[i], enemies[j])) {
-                        enemies[j].health--;
-                        createHitEffect(bullets[i].x, bullets[i].y);
-                        bullets.splice(i, 1);
-                        break;
-                    }
-                }
-                
-                // Remove off-screen
-                if (bullets[i] && (bullets[i].x < cameraX - 50 || bullets[i].x > cameraX + width + 50)) {
-                    bullets.splice(i, 1);
-                }
-            }
-            
-            // Update powerups
-            for (let i = powerups.length - 1; i >= 0; i--) {
-                updatePowerup(powerups[i]);
-                drawPowerup(powerups[i]);
-                
-                if (powerupCollected(powerups[i], player)) {
-                    if (powerups[i].type === 'weapon') {
-                        upgradeWeapon();
-                    } else if (powerups[i].type === 'health') {
-                        player.health = min(player.maxHealth, player.health + 1);
-                    } else {
-                        score += 50;
-                    }
-                    powerups.splice(i, 1);
-                }
-            }
-            
-            // Update particles
-            for (let i = particles.length - 1; i >= 0; i--) {
-                updateParticle(particles[i]);
-                drawParticle(particles[i]);
-                if (particles[i].life <= 0) {
-                    particles.splice(i, 1);
-                }
-            }
+            spawnEnemies();
+            updateEnemies();
+            updateBullets();
+            updatePowerups();
+            updateParticles();
             
             pop();
             
-            // Check win
-            if (player.x > levelWidth - 100) {
-                if (currentLevel < 3) {
-                    gameState = 'levelComplete';
-                } else {
-                    gameState = 'victory';
-                    if (score > highScore) {
-                        highScore = score;
-                        localStorage.setItem('glideWarriorScore', highScore.toString());
-                    }
-                }
-            }
-            
-            // Check lose
-            if (player.health <= 0) {
-                gameState = 'gameover';
-                if (score > highScore) {
-                    highScore = score;
-                    localStorage.setItem('glideWarriorScore', highScore.toString());
-                }
-            }
+            checkWinOrLose();
         }
         
         function updatePlayer() {
-            if (player.health <= 0) return;
-            
             // Movement
+            player.animFrame += 0.2;
             if (keyIsDown(LEFT_ARROW)) {
                 player.vx = player.dashing ? -player.speed * 2 : -player.speed;
+                player.facing = -1;
             } else if (keyIsDown(RIGHT_ARROW)) {
                 player.vx = player.dashing ? player.speed * 2 : player.speed;
+                player.facing = 1;
             } else {
                 player.vx = 0;
-            }
-            
-            if (keyIsDown(88)) { // X key
-                shootBullet();
             }
             
             player.x += player.vx;
             player.vy += player.gravity;
             player.y += player.vy;
-            
             player.onGround = false;
             
             // Platform collision
-            for (let platform of platforms) {
-                if (playerIntersects(platform)) {
+            for (let p of platforms) {
+                if (player.x + player.w/2 > p.x && player.x - player.w/2 < p.x + p.w &&
+                    player.y + player.h/2 > p.y && player.y + player.h/2 < p.y + p.h + player.vy) {
                     if (player.vy > 0) {
-                        player.y = platform.y - player.h;
+                        player.y = p.y - player.h / 2;
                         player.vy = 0;
                         player.onGround = true;
-                        if (player.special === 'doubleJump') {
-                            player.jumpsLeft = 2;
-                        } else {
-                            player.jumpsLeft = 1;
-                        }
+                        player.jumpsLeft = (player.special === 'doubleJump') ? 2 : 1;
                     }
                 }
             }
             
-            player.x = constrain(player.x, 0, levelWidth - player.w);
+            player.x = constrain(player.x, player.w/2, levelWidth - player.w/2);
             
             // Enemy collision
             if (player.invincible === 0) {
-                for (let enemy of enemies) {
-                    if (playerHitsEnemy(enemy)) {
+                for (let e of enemies) {
+                    if (dist(player.x, player.y, e.x, e.y) < (player.w + e.w) / 2) {
                         takeDamage(1);
                     }
                 }
@@ -344,441 +223,295 @@
                 if (player.dashTimer === 0) player.dashing = false;
             }
             
-            // Fall death
-            if (player.y > height + 100) {
-                takeDamage(player.health);
-            }
+            if (player.y > height + 100) takeDamage(player.health);
         }
         
         function drawPlayer() {
             if (player.health <= 0) return;
             
-            if (player.invincible % 10 < 5 || player.invincible === 0) {
-                fill(player.color);
-                stroke(red(player.color) * 0.8, green(player.color) * 0.8, blue(player.color) * 0.8);
-                strokeWeight(2);
-                rect(player.x, player.y, player.w, player.h);
+            push();
+            translate(player.x, player.y);
+            scale(player.facing, 1);
+
+            if (player.invincible % 10 < 5) {
+                let frame;
+                if (!player.onGround) {
+                    frame = 2; // Jump frame
+                } else if (player.vx !== 0) {
+                    frame = floor(player.animFrame % 2); // Walk frames
+                } else {
+                    frame = 0; // Idle frame
+                }
                 
-                // Gun
-                fill(150);
-                rect(player.x + player.w, player.y + player.h/2 - 3, 12, 6);
-                
-                // Name
-                fill(255);
-                textSize(10);
-                textAlign(CENTER);
-                text(PLAYER_NAME, player.x + player.w/2, player.y - 5);
+                // image(img, dx, dy, dWidth, dHeight, sx, sy, [sWidth], [sHeight])
+                image(assets.playerSheet, 0, 0, player.w, player.h, frame * 32, player.spriteIndex * 48, 32, 48);
             }
+            pop();
             
-            if (player.dashing) {
-                fill(255, 255, 0, 100);
-                noStroke();
-                circle(player.x + player.w/2, player.y + player.h/2, player.w * 2.5);
+            fill(255);
+            textSize(10);
+            textAlign(CENTER);
+            text(PLAYER_NAME, player.x, player.y - player.h/2 - 5);
+        }
+
+        function spawnEnemies() {
+            spawnTimer++;
+            if (spawnTimer > settings.spawnRate && enemies.length < settings.enemyCount) {
+                let spawnX = cameraX + width + random(100, 300);
+                if (spawnX < levelWidth - 200) {
+                    let enemyType = random(['ground', 'flying']);
+                    let y = height - 64;
+                    for(let p of platforms) {
+                        if (spawnX > p.x && spawnX < p.x + p.w) {
+                           y = p.y - 32;
+                           break;
+                        }
+                    }
+                    if(enemyType === 'flying') y = random(150, 350);
+
+                    enemies.push({
+                        x: spawnX, y: y, w: 48, h: 48,
+                        vx: -settings.enemySpeed, vy: 0,
+                        health: settings.enemyHealth, maxHealth: settings.enemyHealth,
+                        type: enemyType, baseY: y, animFrame: random(100),
+                        spriteIndex: enemyType === 'ground' ? 0 : 1
+                    });
+                    spawnTimer = 0;
+                }
+            }
+        }
+
+        function updateEnemies() {
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                let e = enemies[i];
+                e.x += e.vx;
+                e.animFrame += 0.15;
+                if (e.type === 'flying') e.y = e.baseY + sin(frameCount * 0.05 + e.x * 0.1) * 40;
+
+                drawEnemy(e);
+                
+                if (e.health <= 0) {
+                    score += 100;
+                    createParticleEffect(e.x, e.y, 20, 'explosion');
+                    if (random() < 0.2) {
+                        powerups.push({ x: e.x, y: e.y, w: 32, h: 32, type: random(['weapon', 'health']), timer: 300 });
+                    }
+                    enemies.splice(i, 1);
+                } else if (e.x < cameraX - 100) {
+                    enemies.splice(i, 1);
+                }
+            }
+        }
+
+        function drawEnemy(e) {
+            push();
+            translate(e.x, e.y);
+            scale(e.vx > 0 ? 1: -1, 1);
+            let frame = floor(e.animFrame % 2);
+            image(assets.enemySheet, 0, 0, e.w, e.h, frame * 32, e.spriteIndex * 32, 32, 32);
+            pop();
+
+            // Health bar
+            fill(50);
+            rect(e.x - e.w/2, e.y - e.h/2 - 10, e.w, 5);
+            fill(255, 0, 0);
+            rect(e.x - e.w/2, e.y - e.h/2 - 10, e.w * (e.health / e.maxHealth), 5);
+        }
+
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.x += b.vx;
+                
+                // Draw bullet as a particle/sprite
+                push();
+                fill(255, 255, 0); noStroke();
+                circle(b.x, b.y, 8);
+                pop();
+
+                let hit = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    if (dist(b.x, b.y, enemies[j].x, enemies[j].y) < 24) {
+                        enemies[j].health--;
+                        createParticleEffect(b.x, b.y, 5, 'hit');
+                        hit = true;
+                        break;
+                    }
+                }
+                
+                if (hit || b.x < cameraX - 50 || b.x > cameraX + width + 50) {
+                    bullets.splice(i, 1);
+                }
+            }
+        }
+
+        function updatePowerups() {
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                let p = powerups[i];
+                p.timer--;
+
+                let frame = p.type === 'weapon' ? 0 : 1;
+                image(assets.powerups, p.x, p.y, p.w, p.h, frame * 32, 0, 32, 32);
+
+                if (dist(player.x, player.y, p.x, p.y) < 40) {
+                    if (p.type === 'health') {
+                        player.health = min(player.maxHealth, player.health + 1);
+                    } else {
+                        score += 50; // Simple score bonus for weapon pickup for now
+                    }
+                    powerups.splice(i, 1);
+                } else if (p.timer <= 0) {
+                    powerups.splice(i, 1);
+                }
             }
         }
         
         function drawBackground() {
             // Parallax background
-            fill(30, 30, 60);
-            noStroke();
-            for (let i = 0; i < 5; i++) {
-                let x = (cameraX * 0.3 + i * 400) % 800;
-                rect(x - 400, 0, 400, height);
+            for (let i = -1; i < 3; i++) {
+                image(assets.background1, width/2 + i * width - cameraX * 0.25, height/2, width, height);
+                image(assets.background2, width/2 + i * width - cameraX * 0.5, height/2, width, height);
             }
-            
-            // Stars
-            fill(255, 255, 150);
-            for (let i = 0; i < 50; i++) {
-                let x = (i * 127 + cameraX * 0.5) % levelWidth;
-                let y = (i * 97) % (height - 100);
-                circle(x, y, 2);
+        }
+
+        function drawPlatforms() {
+            for(let p of platforms) {
+                // Draw platforms using tileset
+                let tiles = p.w / 64;
+                for(let i = 0; i < tiles; i++) {
+                     image(assets.tileSet, p.x + i * 64 + 32, p.y + p.h/2, 64, 64);
+                }
             }
         }
         
         function drawHUD() {
-            // HUD background
-            fill(0, 0, 0, 180);
-            noStroke();
-            rect(0, 0, width, 80);
+            fill(0, 0, 0, 150);
+            rectMode(CORNER);
+            rect(0, 0, width, 50);
             
             fill(255);
-            textSize(14);
-            textAlign(LEFT);
+            textSize(16);
+            textAlign(LEFT, CENTER);
             
-            // Player info
-            fill(player.color);
-            text('Player: ' + PLAYER_NAME, 10, 20);
-            fill(255);
+            text(`Player: ${PLAYER_NAME}`, 10, 25);
+            text(`Score: ${score}`, 300, 25);
+            text(`Level: ${currentLevel}`, 450, 25);
             
             // Health bar
-            fill(255, 0, 0);
-            rect(10, 25, 100, 10);
+            fill(50);
+            rect(130, 18, 150, 15);
             fill(0, 255, 0);
-            rect(10, 25, 100 * (player.health / player.maxHealth), 10);
-            
-            text('Weapon: ' + player.weapon, 120, 20);
-            text('Score: ' + score, 250, 20);
-            text('Level: ' + currentLevel, 350, 20);
-            text('High: ' + highScore, 450, 20);
-            
-            // Controls
-            textAlign(RIGHT);
-            textSize(12);
-            text('←→ Move | ↑ Jump | X Shoot | C Dash', width - 10, 20);
-            text('Character: ' + CHARACTER_TYPE.toUpperCase() + ' | Difficulty: ' + DIFFICULTY.toUpperCase(), width - 10, 40);
+            rect(130, 18, 150 * (player.health / player.maxHealth), 15);
         }
         
-        function showGameOver() {
-            background(0, 0, 0, 200);
+        function showEndScreen() {
+            fill(0, 0, 0, 180);
+            rectMode(CORNER);
+            rect(0, 0, width, height);
             
-            if (gameState === 'victory') {
-                fill(0, 255, 0);
-                textSize(64);
-                textAlign(CENTER, CENTER);
-                text('VICTORY!', width/2, height/2 - 100);
-                
-                fill(255);
-                textSize(24);
-                text(PLAYER_NAME + ' completed Level ' + currentLevel + '!', width/2, height/2 - 40);
-                text('Final Score: ' + score, width/2, height/2 - 10);
-                text('High Score: ' + highScore, width/2, height/2 + 20);
-                
-            } else if (gameState === 'levelComplete') {
-                fill(100, 255, 100);
-                textSize(48);
-                textAlign(CENTER, CENTER);
-                text('LEVEL ' + currentLevel + ' COMPLETE!', width/2, height/2 - 80);
-                
-                fill(255);
-                textSize(24);
-                text('Score: ' + score, width/2, height/2 - 20);
-                text('Press SPACE for next level', width/2, height/2 + 20);
-                
-            } else {
-                fill(255, 0, 0);
-                textSize(64);
-                textAlign(CENTER, CENTER);
-                text('GAME OVER', width/2, height/2 - 100);
-                
-                fill(255);
-                textSize(24);
-                text(PLAYER_NAME + ' was defeated!', width/2, height/2 - 40);
-                text('Final Score: ' + score, width/2, height/2 - 10);
-                text('High Score: ' + highScore, width/2, height/2 + 20);
+            let title = gameState === 'victory' ? 'VICTORY!' : 'GAME OVER';
+            let titleColor = gameState === 'victory' ? color(0, 255, 0) : color(255, 0, 0);
+            
+            fill(titleColor);
+            textSize(64);
+            textAlign(CENTER, CENTER);
+            text(title, width/2, height/2 - 80);
+            
+            fill(255);
+            textSize(24);
+            text('Final Score: ' + score, width/2, height/2);
+            if (score > highScore) {
+                text('New High Score!', width/2, height/2 + 40);
             }
             
-            textSize(16);
-            text('Press R to restart', width/2, height/2 + 60);
+            textSize(18);
+            text('Press R to restart', width/2, height/2 + 100);
         }
         
         function keyPressed() {
-            if (key === ' ') {
-                if (gameState === 'playing') {
-                    jumpPlayer();
-                } else if (gameState === 'levelComplete') {
-                    currentLevel++;
-                    gameState = 'playing';
-                    initLevel(currentLevel);
+            if ((key === ' ' || keyCode === UP_ARROW) && gameState === 'playing') {
+                if (player.jumpsLeft > 0) {
+                    player.vy = player.jumpPower;
+                    player.jumpsLeft--;
                 }
             }
-            
-            if (key === 'x' || key === 'X') {
-                if (gameState === 'playing') {
-                    shootBullet();
+            if ((key === 'x' || key === 'X') && gameState === 'playing') {
+                if (player.shootCooldown === 0) {
+                    bullets.push({ x: player.x, y: player.y, vx: 12 * player.facing });
+                    player.shootCooldown = 20;
                 }
             }
-            
-            if (key === 'c' || key === 'C') {
-                if (gameState === 'playing') {
-                    dashPlayer();
-                }
-            }
-            
-            if (key === 'r' || key === 'R') {
-                score = 0;
-                currentLevel = START_LEVEL;
-                gameState = 'playing';
-                initLevel(currentLevel);
-            }
-        }
-        
-        // Helper functions
-        function jumpPlayer() {
-            if (player.jumpsLeft > 0) {
-                player.vy = player.jumpPower;
-                player.jumpsLeft--;
-            }
-        }
-        
-        function dashPlayer() {
-            if (player.special === 'dash' && player.dashCooldown === 0) {
+             if ((key === 'c' || key === 'C') && player.special === 'dash' && player.dashCooldown === 0) {
                 player.dashing = true;
                 player.dashTimer = 15;
                 player.dashCooldown = 90;
                 player.invincible = 15;
             }
-        }
-        
-        function shootBullet() {
-            if (player.shootCooldown === 0) {
-                bullets.push({
-                    x: player.x + player.w,
-                    y: player.y + player.h/2,
-                    w: 8,
-                    h: 4,
-                    vx: 10,
-                    vy: 0,
-                    friendly: true
-                });
-                player.shootCooldown = 15;
+            if (key === 'r' || key === 'R') {
+                if (gameState !== 'playing') {
+                    score = 0;
+                    currentLevel = START_LEVEL;
+                    gameState = 'playing';
+                    initLevel(currentLevel);
+                }
             }
-        }
-        
-        function upgradeWeapon() {
-            let weapons = ['PISTOL', 'SPREAD', 'LASER', 'MISSILE'];
-            let currentIndex = weapons.findIndex(w => w === player.weapon);
-            player.weapon = weapons[(currentIndex + 1) % weapons.length];
         }
         
         function takeDamage(amount) {
-            if (player.special === 'armor') {
-                amount = Math.max(1, amount - 1);
-            }
+            if (player.invincible > 0) return;
+            if (player.special === 'armor') amount = max(1, amount - 1);
             player.health -= amount;
             player.invincible = 120;
-            createExplosion(player.x, player.y);
+            createParticleEffect(player.x, player.y, 10, 'hit');
         }
-        
-        function playerIntersects(platform) {
-            return player.x < platform.x + platform.w &&
-                   player.x + player.w > platform.x &&
-                   player.y + player.h > platform.y &&
-                   player.y + player.h < platform.y + platform.h + player.vy;
-        }
-        
-        function playerHitsEnemy(enemy) {
-            return player.x < enemy.x + enemy.w &&
-                   player.x + player.w > enemy.x &&
-                   player.y < enemy.y + enemy.h &&
-                   player.y + player.h > enemy.y;
-        }
-        
-        function createGroundEnemy(x, y) {
-            return {
-                x: x, y: y, w: 30, h: 35,
-                vx: -settings.enemySpeed, vy: 0,
-                health: settings.enemyHealth,
-                maxHealth: settings.enemyHealth,
-                type: 'ground',
-                shootTimer: int(random(60, 180))
-            };
-        }
-        
-        function createFlyingEnemy(x, y) {
-            return {
-                x: x, y: y, w: 30, h: 35,
-                vx: -settings.enemySpeed * 0.8, vy: 0,
-                health: settings.enemyHealth,
-                maxHealth: settings.enemyHealth,
-                type: 'flying',
-                baseY: y,
-                shootTimer: int(random(60, 180))
-            };
-        }
-        
-        function createJumpingEnemy(x, y) {
-            return {
-                x: x, y: y, w: 30, h: 35,
-                vx: -settings.enemySpeed, vy: 0,
-                health: settings.enemyHealth,
-                maxHealth: settings.enemyHealth,
-                type: 'jumping',
-                onGround: false,
-                jumpTimer: int(random(60, 120)),
-                shootTimer: int(random(60, 180))
-            };
-        }
-        
-        function updateEnemy(enemy) {
-            enemy.x += enemy.vx;
-            
-            if (enemy.type === 'flying') {
-                enemy.y = enemy.baseY + sin(frameCount * 0.03) * 50;
-                enemy.y = constrain(enemy.y, 100, height - 150);
-            } else if (enemy.type === 'jumping') {
-                enemy.vy += 0.6; // gravity
-                enemy.y += enemy.vy;
-                
-                enemy.onGround = false;
-                for (let platform of platforms) {
-                    if (enemyIntersects(enemy, platform)) {
-                        enemy.y = platform.y - enemy.h;
-                        enemy.vy = 0;
-                        enemy.onGround = true;
-                    }
-                }
-                
-                enemy.jumpTimer--;
-                if (enemy.jumpTimer <= 0 && enemy.onGround) {
-                    enemy.vy = -12;
-                    enemy.jumpTimer = int(random(60, 120));
-                }
-            }
-            
-            enemy.shootTimer--;
-            if (enemy.shootTimer <= 0 && abs(enemy.x - player.x) < 400) {
-                bullets.push({
-                    x: enemy.x, y: enemy.y + enemy.h/2,
-                    w: 8, h: 4, vx: -8, vy: 0, friendly: false
-                });
-                enemy.shootTimer = int(random(60, 180));
-            }
-        }
-        
-        function drawEnemy(enemy) {
-            if (enemy.type === 'flying') {
-                fill(255, 100, 255);
-                stroke(200, 50, 200);
-                strokeWeight(2);
-                ellipse(enemy.x + enemy.w/2, enemy.y + enemy.h/2, enemy.w, enemy.h);
-            } else if (enemy.type === 'jumping') {
-                fill(255, 255, 0);
-                stroke(200, 200, 0);
-                strokeWeight(2);
-                rect(enemy.x, enemy.y, enemy.w, enemy.h);
-            } else {
-                fill(255, 0, 0);
-                stroke(200, 0, 0);
-                strokeWeight(2);
-                rect(enemy.x, enemy.y, enemy.w, enemy.h);
-            }
-            
-            // Gun
-            fill(100);
-            rect(enemy.x - 10, enemy.y + enemy.h/2 - 3, 10, 6);
-            
-            // Health bar
-            fill(0);
-            rect(enemy.x, enemy.y - 8, enemy.w, 4);
-            fill(0, 255, 0);
-            rect(enemy.x, enemy.y - 8, enemy.w * (enemy.health / enemy.maxHealth), 4);
-        }
-        
-        function enemyIntersects(enemy, platform) {
-            return enemy.x < platform.x + platform.w &&
-                   enemy.x + enemy.w > platform.x &&
-                   enemy.y + enemy.h > platform.y &&
-                   enemy.y + enemy.h < platform.y + platform.h + enemy.vy;
-        }
-        
-        function updateBullet(bullet) {
-            bullet.x += bullet.vx;
-            bullet.y += bullet.vy;
-        }
-        
-        function drawBullet(bullet) {
-            fill(bullet.friendly ? color(255, 255, 0) : color(255, 100, 0));
-            noStroke();
-            rect(bullet.x, bullet.y, bullet.w, bullet.h);
-        }
-        
-        function bulletHits(bullet, target) {
-            return bullet.x < target.x + target.w &&
-                   bullet.x + bullet.w > target.x &&
-                   bullet.y < target.y + target.h &&
-                   bullet.y + bullet.h > target.y;
-        }
-        
-        function createPowerup(x, y) {
-            return {
-                x: x, y: y, w: 20, h: 20,
-                vy: 3, type: random(['weapon', 'health', 'coin']),
-                bounce: 0
-            };
-        }
-        
-        function updatePowerup(powerup) {
-            powerup.y += powerup.vy;
-            powerup.bounce += 0.1;
-            
-            if (powerup.y > height - 80) {
-                powerup.y = height - 80;
-                powerup.vy = 0;
-            }
-        }
-        
-        function drawPowerup(powerup) {
-            let bob = sin(powerup.bounce) * 3;
-            
-            if (powerup.type === 'weapon') {
-                fill(255, 0, 255);
-                stroke(200, 0, 200);
-                strokeWeight(2);
-                circle(powerup.x + powerup.w/2, powerup.y + powerup.h/2 + bob, powerup.w);
-                fill(255);
-                textSize(12);
-                textAlign(CENTER, CENTER);
-                text('W', powerup.x + powerup.w/2, powerup.y + powerup.h/2 + bob);
-            } else if (powerup.type === 'health') {
-                fill(0, 255, 0);
-                stroke(0, 200, 0);
-                strokeWeight(2);
-                circle(powerup.x + powerup.w/2, powerup.y + powerup.h/2 + bob, powerup.w);
-                fill(255);
-                textSize(12);
-                textAlign(CENTER, CENTER);
-                text('+', powerup.x + powerup.w/2, powerup.y + powerup.h/2 + bob);
-            } else {
-                fill(255, 215, 0);
-                stroke(200, 170, 0);
-                strokeWeight(2);
-                circle(powerup.x + powerup.w/2, powerup.y + powerup.h/2 + bob, powerup.w);
-                fill(255);
-                textSize(12);
-                textAlign(CENTER, CENTER);
-                text('★', powerup.x + powerup.w/2, powerup.y + powerup.h/2 + bob);
-            }
-        }
-        
-        function powerupCollected(powerup, player) {
-            return powerup.x < player.x + player.w &&
-                   powerup.x + powerup.w > player.x &&
-                   powerup.y < player.y + player.h &&
-                   powerup.y + powerup.h > player.y;
-        }
-        
-        function createExplosion(x, y) {
-            for (let i = 0; i < 10; i++) {
+
+        function createParticleEffect(x, y, count, type) {
+            for (let i = 0; i < count; i++) {
                 particles.push({
                     x: x, y: y,
-                    vx: random(-3, 3), vy: random(-3, 3),
-                    life: 30, col: color(255, 100, 0)
+                    vx: random(-4, 4), vy: random(-6, 2),
+                    life: 40,
+                    type: type
                 });
             }
         }
-        
-        function createHitEffect(x, y) {
-            for (let i = 0; i < 5; i++) {
-                particles.push({
-                    x: x, y: y,
-                    vx: random(-2, 2), vy: random(-2, 2),
-                    life: 20, col: color(255, 255, 0)
-                });
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.3; // gravity
+                p.life--;
+                
+                let frame = p.type === 'explosion' ? 0 : 1;
+                let alpha = map(p.life, 0, 40, 0, 255);
+                
+                push();
+                tint(255, alpha);
+                image(assets.effects, p.x, p.y, 24, 24, frame * 16, 0, 16, 16);
+                pop();
+                
+                if (p.life <= 0) particles.splice(i, 1);
             }
         }
         
-        function updateParticle(particle) {
-            particle.x += particle.vx;
-            particle.y += particle.vy;
-            particle.vy += 0.1; // gravity
-            particle.life--;
+        function checkWinOrLose() {
+            if (player.x > levelWidth - 150) {
+                gameState = 'victory';
+                updateHighScore();
+            }
+            if (player.health <= 0) {
+                gameState = 'gameover';
+                updateHighScore();
+            }
         }
-        
-        function drawParticle(particle) {
-            let alpha = map(particle.life, 0, 30, 0, 255);
-            fill(red(particle.col), green(particle.col), blue(particle.col), alpha);
-            noStroke();
-            circle(particle.x, particle.y, 6);
+
+        function updateHighScore() {
+             if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('glideWarriorScore', highScore.toString());
+            }
         }
     </script>
 </body>
